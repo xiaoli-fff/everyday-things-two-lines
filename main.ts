@@ -16,16 +16,39 @@ const LINES = [
   'The comparison works because sound bounces off hard walls the way a ball bounces off a floor, but it leaves out that nobody is answering you: it is only your own voice, tired from the trip.',
 ];
 
-// The sealed scorer only accepts 1–400 UTF-8 characters, not only whitespace,
-// and the entry must be exactly two lines: fail loudly here instead of
-// writing an entry the judge would never see.
-const ENTRY = LINES.join('\n') + '\n';
-if (LINES.length !== 2) {
-  throw new Error(`entry must be exactly two lines, got ${LINES.length}`);
+// Gate (competition.yaml): /output/entry.txt must be UTF-8 text of 1-400
+// characters, not only whitespace, and exactly two lines, each one sentence.
+// validateEntry checks each of those items separately so a failure names
+// the gate item that was missed instead of a bare character count.
+function validateEntry(lines: string[], maxChars: number): string {
+  if (lines.length !== 2) {
+    throw new Error(`gate failed: entry must be exactly two lines, got ${lines.length}`);
+  }
+  for (const [i, line] of lines.entries()) {
+    const n = i + 1;
+    if (line.trim().length === 0) {
+      throw new Error(`gate failed: line ${n} must not be empty`);
+    }
+    if (line.includes('\n') || line.includes('\r')) {
+      throw new Error(`gate failed: line ${n} must not contain a line break`);
+    }
+    // One sentence: ends with a full stop and contains no other full stop.
+    if (!line.endsWith('.') || line.slice(0, -1).includes('.')) {
+      throw new Error(`gate failed: line ${n} must be exactly one sentence ending with '.'`);
+    }
+  }
+  const entry = lines.join('\n') + '\n';
+  const chars = [...entry].length;
+  if (chars < 1 || chars > maxChars) {
+    throw new Error(`gate failed: entry must be 1-${maxChars} characters, got ${chars}`);
+  }
+  if (entry.trim().length === 0) {
+    throw new Error('gate failed: entry must not be only whitespace');
+  }
+  return entry;
 }
-if (ENTRY.length < 1 || ENTRY.length > 400 || ENTRY.trim().length === 0) {
-  throw new Error(`entry must be 1-400 characters, got ${ENTRY.length}`);
-}
+
+const ENTRY = validateEntry(LINES, 400);
 
 const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 mkdirSync(outDir, { recursive: true });
